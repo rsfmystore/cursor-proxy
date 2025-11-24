@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cursor API 控制面板</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #3498db;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f1c40f;
+            --text-color: #2c3e50;
+            --bg-color: #ecf0f1;
+            --card-bg: #ffffff;
+            --border-radius: 8px;
+            --spacing: 20px;
+            --shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: min(1200px, 95%);
+            margin: 0 auto;
+            padding: var(--spacing);
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: var(--spacing);
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 4px;
+            background: var(--accent-color);
+            border-radius: 2px;
+        }
+
+        .status {
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .status.running {
+            background: linear-gradient(135deg, #a8e6cf 0%, #1de9b6 100%);
+            color: #1b5e20;
+        }
+
+        .status.stopped {
+            background: linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%);
+            color: #b71c1c;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing);
+            margin: 0;
+        }
+
+        .control-panel {
+            background: var(--card-bg);
+            padding: calc(var(--spacing) * 0.8);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            transition: transform 0.3s ease;
+            height: fit-content;
+        }
+
+        .control-panel:hover {
+            transform: translateY(-5px);
+        }
+
+        .panel-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        button {
+            width: 100%;
+            padding: 0.8rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 5px 0;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .start-btn { 
+            background: linear-gradient(135deg, var(--success-color) 0%, #27ae60 100%);
+            color: white;
+        }
+
+        .stop-btn { 
+            background: linear-gradient(135deg, var(--danger-color) 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .clean-btn {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #2980b9 100%);
+            color: white;
+        }
+
+        .token-section {
+            background: var(--card-bg);
+            padding: var(--spacing);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin: var(--spacing) 0;
+        }
+
+        .token-list {
+            background: var(--bg-color);
+            border-radius: var(--border-radius);
+            padding: var(--spacing);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .token-item {
+            background: var(--card-bg);
+            margin-bottom: 8px;
+            padding: 12px;
+            border-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .token-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .token-checkbox {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .token-latency {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .latency-good {
+            background: linear-gradient(135deg, #a8e6cf 0%, #1de9b6 100%);
+            color: #1b5e20;
+        }
+
+        .latency-medium {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffd54f 100%);
+            color: #856404;
+        }
+
+        .latency-bad {
+            background: linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%);
+            color: #b71c1c;
+        }
+
+        .server-info {
+            background: var(--card-bg);
+            padding: var(--spacing);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+        }
+
+        .info-item {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: var(--bg-color);
+            border-radius: calc(var(--border-radius) - 4px);
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .info-value {
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .model-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .model-item {
+            background: var(--bg-color);
+            padding: 1rem;
+            border-radius: calc(var(--border-radius) - 4px);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .model-item:hover {
+            transform: scale(1.05);
+            background: linear-gradient(135deg, var(--card-bg) 0%, var(--bg-color) 100%);
+        }
+
+        .notice {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffe082 100%);
+            padding: var(--spacing);
+            border-radius: var(--border-radius);
+            margin-bottom: var(--spacing);
+            box-shadow: var(--shadow);
+        }
+
+        .notice strong {
+            color: #856404;
+        }
+
+        .logs {
+            background: var(--card-bg);
+            padding: var(--spacing);
+            border-radius: var(--border-radius);
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+        }
+
+        .logs div {
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--bg-color);
+        }
+
+        .logs div:last-child {
+            border-bottom: none;
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
+
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .container > * {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1440px) {
+            .container {
+                max-width: 1100px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                width: 90%;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .button-group {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 15px;
+            }
+            
+            .control-panel {
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+                padding: 15px;
+            }
+            
+            .button-group {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .token-section {
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+            
+            .token-item {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 10px;
+            }
+            
+            .token-latency {
+                align-self: stretch;
+                text-align: center;
+            }
+        }
+
+        /* 打印样式 */
+        @media print {
+            .container {
+                max-width: 100%;
+                padding: 0;
+            }
+            .button-group, .sponsor-container {
+                display: none;
+            }
+        }
+
+        /* 深色模式支持 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #1a1a1a;
+                --card-bg: #2d2d2d;
+                --text-color: #ffffff;
+                --primary-color: #3498db;
+                --secondary-color: #2980b9;
+            }
+            
+            .status.running {
+                background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            }
+            
+            .status.stopped {
+                background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            }
+            
+            .notice {
+                background: linear-gradient(135deg, #f39c12 0%, #d35400 100%);
+                color: #ffffff;
+            }
+            
+            .notice strong {
+                color: #ffffff;
+            }
+        }
+
+        /* 赞助码区域响应式调整 */
+        .sponsor-container {
+            position: fixed;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 1400px) {
+            .sponsor-container {
+                left: 10px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .sponsor-container {
+                position: static;
+                margin: 20px auto;
+                transform: none;
+                max-width: 300px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 添加左侧固定的赞助码区域 -->
+    <div class="sponsor-container">
+        <p style="color: #333; margin-bottom: 12px; font-size: 16px; font-weight: 500;">
+            支持开发者
+        </p>
+        <img src="./sponsor.jpg" alt="赞助码" style="width: 180px; border-radius: 10px; 
+            transition: transform 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'" 
+            onmouseout="this.style.transform='scale(1)'">
+        <p style="color: #666; margin-top: 12px; font-size: 14px; line-height: 1.4;">
+            <br>
+            
+        </p>
+    </div>
+
+    <div class="container">
+        <h1>Cursor API 控制面板</h1>
+        
+        <div class="notice">
+            <strong>重要提示：</strong>调用时直接填写调用地址无需填写token，项目自动调用本地token.txt内的的token。
+        </div>
+
+        <div id="apiStatus" class="status">
+            检查服务器状态...
+        </div>
+
+        <div class="button-group">
+            <div class="control-panel">
+                <div class="panel-title">端口管理</div>
+                <button id="cleanPort" class="clean-btn">清理端口</button>
+            </div>
+            <div class="control-panel">
+                <div class="panel-title">API 服务器</div>
+                <button id="startApi" class="start-btn">启动服务器</button>
+                <button id="stopApi" class="stop-btn">停止服务器</button>
+            </div>
+            <div class="control-panel">
+                <div class="panel-title">Token 管理</div>
+                <button id="startToken" class="start-btn">获取Token</button>
+            </div>
+        </div>
+
+        <div class="token-section">
+            <div class="section-header">
+                <div class="panel-title">Token列表 (<span id="tokenCount">0</span>)</div>
+                <div>
+                    <button id="testLatency" class="test-btn">测试延迟</button>
+                    <button id="deleteTokens" class="delete-btn" disabled>删除选中</button>
+                    <button id="refreshTokens" class="refresh-btn">刷新列表</button>
+                </div>
+            </div>
+            <div class="token-list" id="tokenList">
+                <!-- Token列表将在这里显示 -->
+            </div>
+        </div>
+
+        <div class="server-info">
+            <div class="info-item">
+                <span class="info-label">API服务器地址:</span>
+                <span class="info-value" id="apiServerUrl">http://localhost:3010</span>
+                <span class="info-label">酒馆填：</span>
+                <span class="info-value" id="apiServerUrl">http://localhost:3010/v1</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Token轮询状态:</span>
+                <span class="info-value" id="tokenStatus">未启动</span>
+                <span class="info-note">（自动轮询所有可用Token）</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">支持模型:</span>
+                <span class="info-note">（复制填入）</span>
+                <div class="model-list" id="modelList">
+                    <!-- 模型列表将通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </div>
+
+        <div class="logs" id="logs"></div>
+        
+        <!-- 添加项目链接 -->
+        <div style="margin-top: 20px; text-align: center; padding: 10px; border-top: 1px solid #ddd;">
+            <a href="https://github.com/justhil/Foolproof-cursor-freeloading-method" 
+               target="_blank" 
+               style="color: #6c757d; text-decoration: none;">
+                在 GitHub 上查看项目源码
+            </a>
+        </div>
+
+        <!-- 添加模型列表部分 -->
+        <div class="models-section">
+            <div class="models-title">支持的模型</div>
+            <div id="modelsList"></div>
+        </div>
+    </div>
+
+    <script>
+        const addLog = (message) => {
+            const logs = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString();
+            logs.innerHTML = `<div>[${time}] ${message}</div>` + logs.innerHTML;
+        };
+
+        const updateStatus = async () => {
+            try {
+                await checkPort();  // 添加端口检查
+                const response = await fetch('/api/status');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                const apiStatus = document.getElementById('apiStatus');
+                const startApiBtn = document.getElementById('startApi');
+                const stopApiBtn = document.getElementById('stopApi');
+                
+                if (data.apiServer) {
+                    apiStatus.className = 'status running';
+                    apiStatus.textContent = 'API服务器运行中';
+                    startApiBtn.disabled = true;
+                    stopApiBtn.disabled = false;
+                } else {
+                    apiStatus.className = 'status stopped';
+                    apiStatus.textContent = 'API服务器已停止';
+                    startApiBtn.disabled = false;
+                    stopApiBtn.disabled = true;
+                }
+
+                if (data.error) {
+                    addLog(`服务器错误: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Status update failed:', error);
+                addLog(`状态更新失败: ${error.message}`);
+                document.getElementById('apiStatus').className = 'status stopped';
+                document.getElementById('apiStatus').textContent = '无法连接到控制面板';
+            }
+        };
+
+        document.getElementById('startApi').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                addLog(data.message);
+                await updateStatus();
+            } catch (error) {
+                console.error('Start failed:', error);
+                addLog(`启动失败: ${error.message}`);
+            }
+        });
+
+        document.getElementById('stopApi').addEventListener('click', async () => {
+            if (confirm('确定要停止API服务器吗？')) {
+                try {
+                    const response = await fetch('/api/stop', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    addLog(data.message);
+                    await updateStatus();
+                } catch (error) {
+                    console.error('Stop failed:', error);
+                    addLog(`停止失败: ${error.message}`);
+                }
+            }
+        });
+
+        document.getElementById('startToken').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/token/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                addLog(data.message);
+                
+                // 监听Python进程输出
+                const eventSource = new EventSource('/token-process-output');
+                
+                eventSource.addEventListener('output', async (event) => {
+                    const data = JSON.parse(event.data);
+                    addLog(data.message);
+                    
+                    // 当检测到特定消息时刷新token列表
+                    if (data.message.includes('Token获取完成') || 
+                        data.message.includes('新增Token成功') ||
+                        data.message.includes('Token已存在')) {
+                        await refreshTokenList();
+                    }
+                });
+
+                eventSource.addEventListener('error', (event) => {
+                    if (event.data) {
+                        const data = JSON.parse(event.data);
+                        addLog(`Error: ${data.error}`);
+                    }
+                    eventSource.close();
+                });
+
+                eventSource.addEventListener('exit', async (event) => {
+                    const data = JSON.parse(event.data);
+                    addLog(`进程已退出，退出码: ${data.code}`);
+                    eventSource.close();
+                    await refreshTokenList();  // 进程结束时刷新列表
+                });
+            } catch (error) {
+                console.error('Token start failed:', error);
+                addLog(`启动Token获取失败: ${error.message}`);
+            }
+        });
+
+        const updateTokenStatus = async () => {
+            try {
+                const response = await fetch('/api/tokens');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                const tokenStatus = document.getElementById('tokenStatus');
+                if (data.tokens && data.tokens.length > 0) {
+                    tokenStatus.className = 'token-status active';
+                    tokenStatus.textContent = `运行中 (${data.tokens.length} 个Token轮询)`;
+                } else {
+                    tokenStatus.className = 'token-status inactive';
+                    tokenStatus.textContent = '未启动 (无可用Token)';
+                }
+            } catch (error) {
+                console.error('Failed to update token status:', error);
+                const tokenStatus = document.getElementById('tokenStatus');
+                tokenStatus.className = 'token-status inactive';
+                tokenStatus.textContent = '状态更新失败';
+            }
+        };
+
+        const refreshTokenList = async () => {
+            try {
+                const response = await fetch('/api/tokens');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                const tokenList = document.getElementById('tokenList');
+                const tokenCount = document.getElementById('tokenCount');
+                const deleteBtn = document.getElementById('deleteTokens');
+                const testBtn = document.getElementById('testLatency');
+                
+                tokenList.innerHTML = data.tokens.map(token => 
+                    `<div class="token-item">
+                        <input type="checkbox" class="token-checkbox" value="${token}">
+                        <div class="token-content">${token}</div>
+                        <div class="token-latency" id="latency-${token.substring(0, 8)}"></div>
+                    </div>`
+                ).join('');
+                
+                tokenCount.textContent = data.tokens.length;
+                addLog(`Token列表已更新，共有 ${data.tokens.length} 个Token`);
+
+                // 添加复选框变化监听
+                const checkboxes = document.querySelectorAll('.token-checkbox');
+                checkboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', () => {
+                        const checkedCount = document.querySelectorAll('.token-checkbox:checked').length;
+                        deleteBtn.disabled = checkedCount === 0;
+                        testBtn.disabled = checkedCount === 0;
+                    });
+                });
+
+                await updateTokenStatus();
+            } catch (error) {
+                console.error('Failed to refresh tokens:', error);
+                addLog(`刷新Token列表失败: ${error.message}`);
+            }
+        };
+
+        // 添加删除token功能
+        document.getElementById('deleteTokens').addEventListener('click', async () => {
+            const checkedTokens = Array.from(document.querySelectorAll('.token-checkbox:checked'))
+                .map(checkbox => checkbox.value);
+            
+            if (checkedTokens.length === 0) return;
+            
+            if (confirm(`确定要删除选中的 ${checkedTokens.length} 个Token吗？`)) {
+                try {
+                    const response = await fetch('/api/tokens/delete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ tokens: checkedTokens })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    addLog(data.message);
+                    await refreshTokenList();
+                } catch (error) {
+                    console.error('Delete failed:', error);
+                    addLog(`删除Token失败: ${error.message}`);
+                }
+            }
+        });
+
+        // 监听刷新按钮点击
+        document.getElementById('refreshTokens').addEventListener('click', refreshTokenList);
+
+        // 在页面加载时刷新Token列表
+        refreshTokenList();
+
+        // 修改checkPort函数
+        const checkPort = async () => {
+            try {
+                const response = await fetch('/api/check-port');
+                const data = await response.json();
+                const apiStatus = document.getElementById('apiStatus');
+                
+                if (data.inUse) {
+                    apiStatus.textContent = 'API端口(3010)被占用';
+                    apiStatus.className = 'status stopped';
+                    document.getElementById('startApi').disabled = true;
+                } else {
+                    document.getElementById('startApi').disabled = false;
+                }
+            } catch (error) {
+                console.error('Port check failed:', error);
+            }
+        };
+
+        // 添加端口清理功能
+        document.getElementById('cleanPort').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/clean-port', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                addLog(data.message);
+                await checkPort();
+                await updateStatus();
+            } catch (error) {
+                console.error('Port cleanup failed:', error);
+                addLog(`端口清理失败: ${error.message}`);
+            }
+        });
+
+        // 定期更新状态
+        setInterval(updateStatus, 5000);
+        updateStatus();
+
+        // 模型列表
+        const models = [
+            'claude-3-5-sonnet-200k', 
+            'claude-3-5-sonnet-20241022', 
+            'claude-3-haiku-200k', 
+            'claude-3-opus', 
+            'claude-3.5-haiku', 
+            'claude-3.5-sonnet', 
+            "cursor-small",
+            'gemini-1.5-flash-500k', 
+            'gemini-2.0-flash-exp', 
+            'gemini-2.0-flash-thinking-exp', 
+            'gemini-exp-1206', 
+            'gpt-3.5-turbo', 
+            'gpt-4', 
+            'gpt-4-turbo-2024-04-09', 
+            'gpt-4o', 
+            'gpt-4o-128k', 
+            'gpt-4o-mini', 
+            'o1', 
+            'o1-mini', 
+            'o1-preview'
+        ];
+
+        // 初始化时显示模型列表
+        const modelList = document.getElementById('modelList');
+        modelList.innerHTML = models.map(model => 
+            `<div class="model-item">${model}</div>`
+        ).join('');
+
+        // 更新API服务器地址
+        const updateApiServerUrl = () => {
+            const apiServerUrl = document.getElementById('apiServerUrl');
+            apiServerUrl.textContent = `http://localhost:3010`;
+        };
+
+        // 在页面加载时更新
+        updateApiServerUrl();
+
+        // 定期更新Token状态
+        setInterval(updateTokenStatus, 10000);
+        updateTokenStatus();
+
+        // 添加延迟测试功能
+        document.getElementById('testLatency').addEventListener('click', async () => {
+            const checkedTokens = Array.from(document.querySelectorAll('.token-checkbox:checked'))
+                .map(checkbox => checkbox.value);
+            
+            if (checkedTokens.length === 0) return;
+
+            const testBtn = document.getElementById('testLatency');
+            testBtn.disabled = true;
+            
+            for (const token of checkedTokens) {
+                const latencyElement = document.getElementById(`latency-${token.substring(0, 8)}`);
+                latencyElement.innerHTML = '<div class="loading-spinner"></div>';
+                
+                try {
+                    const response = await fetch('/api/test-latency', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ token })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        latencyElement.textContent = '错误';
+                        latencyElement.className = 'token-latency latency-error';
+                        addLog(`Token ${token.substring(0, 8)}... 测试失败: ${data.error}`);
+                        continue;
+                    }
+                    
+                    const latency = data.latency;
+                    let latencyClass = 'latency-good';
+                    if (latency > 2000) {
+                        latencyClass = 'latency-bad';
+                    } else if (latency > 1000) {
+                        latencyClass = 'latency-medium';
+                    }
+                    
+                    latencyElement.textContent = `${Math.round(latency)}ms`;
+                    latencyElement.className = `token-latency ${latencyClass}`;
+                    addLog(`Token ${token.substring(0, 8)}... 延迟: ${Math.round(latency)}ms`);
+                } catch (error) {
+                    latencyElement.textContent = '错误';
+                    latencyElement.className = 'token-latency latency-error';
+                    addLog(`Token ${token.substring(0, 8)}... 测试失败: ${error.message}`);
+                }
+            }
+            
+            testBtn.disabled = false;
+        });
+
+        // 获取并显示模型列表
+        async function fetchAndDisplayModels() {
+            try {
+                const response = await fetch('/v1/models');
+                const data = await response.json();
+                
+                const modelsListElement = document.getElementById('modelsList');
+                modelsListElement.innerHTML = '';
+                
+                data.data.forEach(model => {
+                    const modelElement = document.createElement('div');
+                    modelElement.className = 'model-item';
+                    modelElement.innerHTML = `
+                        <span class="model-id">${model.id}</span>
+                        <span class="model-owner">由 ${model.owned_by} 提供</span>
+                    `;
+                    modelsListElement.appendChild(modelElement);
+                });
+            } catch (error) {
+                console.error('获取模型列表失败:', error);
+            }
+        }
+
+        // 页面加载时获取模型列表
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAndDisplayModels();
+            // ... existing code ...
+        });
+    </script>
+</body>
+</html> 
